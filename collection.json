@@ -1,0 +1,92 @@
+{
+	"info": {
+		"_postman_id": "fd58a74e-d9c0-4863-9e0d-3e1befc5c43d",
+		"name": "API Pay",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4670100"
+	},
+	"item": [
+		{
+			"name": "Create Payment",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": 100.0,\n  \"currency\": \"USD\",\n  \"description\": \"Test Payment\",\n  \"method\": {\n    \"type\": \"card\",\n    \"card\": {\n      \"number\": \"4111111111111111\",\n      \"holder\": \"John Doe\",\n      \"cvv\": \"123\",\n      \"expiration\": \"12/2025\",\n      \"installmentNumber\": 1\n    }\n  }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8088/payments",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8088",
+					"path": [
+						"payments"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Refund Payment",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": 50.0\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8088/refunds?id=payment_id",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8088",
+					"path": [
+						"refunds"
+					],
+					"query": [
+						{
+							"key": "id",
+							"value": "payment_id"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Payment",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8088/payments/payment_id",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8088",
+					"path": [
+						"payments",
+						"payment_id"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
