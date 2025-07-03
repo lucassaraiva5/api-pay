@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/Rhymond/go-money"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -20,45 +21,48 @@ type Card struct {
 }
 
 type CreateTransactionRequest struct {
-	Amount              float64 `json:"amount"`
-	Currency            string  `json:"currency"`
-	StatementDescriptor string  `json:"statementDescriptor"`
-	PaymentType         string  `json:"paymentType"`
-	Card                Card    `json:"card"`
+	Amount              int64  `json:"amount"`
+	Currency            string `json:"currency"`
+	StatementDescriptor string `json:"statementDescriptor"`
+	PaymentType         string `json:"paymentType"`
+	Card                Card   `json:"card"`
 }
 
 type TransactionResponse struct {
-	ID                  string  `json:"id"`
-	Date                string  `json:"date"`
-	Status              string  `json:"status"`
-	Amount              float64 `json:"amount"`
-	OriginalAmount      float64 `json:"originalAmount"`
-	Currency            string  `json:"currency"`
-	StatementDescriptor string  `json:"statementDescriptor"`
-	PaymentType         string  `json:"paymentType"`
-	CardId              string  `json:"cardId"`
+	ID                  string `json:"id"`
+	Date                string `json:"date"`
+	Status              string `json:"status"`
+	Amount              int64  `json:"amount"`
+	OriginalAmount      int64  `json:"originalAmount"`
+	Currency            string `json:"currency"`
+	StatementDescriptor string `json:"statementDescriptor"`
+	PaymentType         string `json:"paymentType"`
+	CardId              string `json:"cardId"`
 }
 
 type VoidRequest struct {
-	Amount float64 `json:"amount"`
+	Amount int64 `json:"amount"`
+}
+
+type transactionInternal struct {
+	ID                  string
+	Date                string
+	Status              string
+	Amount              *money.Money
+	OriginalAmount      *money.Money
+	Currency            string
+	StatementDescriptor string
+	PaymentType         string
+	CardId              string
 }
 
 var (
-	transactions   = make(map[string]*TransactionResponse)
+	transactions   = make(map[string]*transactionInternal)
 	transactionsMu sync.Mutex
 )
 
 func generateID() string {
-	return RandString(16)
-}
-
-func RandString(n int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
+	return uuid.New().String()
 }
 
 func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,20 +73,32 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	id := generateID()
 	cardId := generateID()
-	resp := &TransactionResponse{
+	amount := money.New(req.Amount, req.Currency)
+	transaction := &transactionInternal{
 		ID:                  id,
 		Date:                time.Now().Format("2006-01-02"),
 		Status:              "paid",
-		Amount:              req.Amount,
-		OriginalAmount:      req.Amount,
+		Amount:              amount,
+		OriginalAmount:      amount,
 		Currency:            req.Currency,
 		StatementDescriptor: req.StatementDescriptor,
 		PaymentType:         req.PaymentType,
 		CardId:              cardId,
 	}
 	transactionsMu.Lock()
-	transactions[id] = resp
+	transactions[id] = transaction
 	transactionsMu.Unlock()
+	resp := TransactionResponse{
+		ID:                  transaction.ID,
+		Date:                transaction.Date,
+		Status:              transaction.Status,
+		Amount:              transaction.Amount.Amount(),
+		OriginalAmount:      transaction.OriginalAmount.Amount(),
+		Currency:            transaction.Currency,
+		StatementDescriptor: transaction.StatementDescriptor,
+		PaymentType:         transaction.PaymentType,
+		CardId:              transaction.CardId,
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
@@ -102,10 +118,22 @@ func voidTransactionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	voidMoney := money.New(req.Amount, transaction.Currency)
 	transaction.Status = "voided"
-	transaction.Amount -= req.Amount
+	transaction.Amount, _ = transaction.Amount.Subtract(voidMoney)
+	resp := TransactionResponse{
+		ID:                  transaction.ID,
+		Date:                transaction.Date,
+		Status:              transaction.Status,
+		Amount:              transaction.Amount.Amount(),
+		OriginalAmount:      transaction.OriginalAmount.Amount(),
+		Currency:            transaction.Currency,
+		StatementDescriptor: transaction.StatementDescriptor,
+		PaymentType:         transaction.PaymentType,
+		CardId:              transaction.CardId,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(transaction)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func getTransactionHandler(w http.ResponseWriter, r *http.Request) {
@@ -118,8 +146,19 @@ func getTransactionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	resp := TransactionResponse{
+		ID:                  transaction.ID,
+		Date:                transaction.Date,
+		Status:              transaction.Status,
+		Amount:              transaction.Amount.Amount(),
+		OriginalAmount:      transaction.OriginalAmount.Amount(),
+		Currency:            transaction.Currency,
+		StatementDescriptor: transaction.StatementDescriptor,
+		PaymentType:         transaction.PaymentType,
+		CardId:              transaction.CardId,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(transaction)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func main() {

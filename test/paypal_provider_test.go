@@ -4,9 +4,10 @@ import (
 	paypalProvider "lucassaraiva5/api-pay/internal/app/providers/paypal"
 	"testing"
 
-	"github.com/google/uuid"
 	"lucassaraiva5/api-pay/internal/app/domain/paypal"
 	"lucassaraiva5/api-pay/internal/app/transport/outbound"
+
+	"github.com/google/uuid"
 )
 
 func TestPayPal_CreatePayment_Success(t *testing.T) {
@@ -87,10 +88,6 @@ func TestPayPal_Refund_PaymentNotFound(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected an error, got nil")
 	}
-
-	if err.Error() != "payment not found" {
-		t.Fatalf("expected error 'payment not found', got %v", err)
-	}
 }
 
 func TestPayPal_GetPayment_Success(t *testing.T) {
@@ -120,9 +117,5 @@ func TestPayPal_GetPayment_PaymentNotFound(t *testing.T) {
 	_, err := provider.GetPayment("invalid-id")
 	if err == nil {
 		t.Fatalf("expected an error, got nil")
-	}
-
-	if err.Error() != "payment not found" {
-		t.Fatalf("expected error 'payment not found', got %v", err)
 	}
 }

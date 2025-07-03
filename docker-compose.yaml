@@ -1,6 +1,39 @@
-version: '3.8'
-
 services:
+  paypal-mock:
+    build:
+      context: .
+      dockerfile: mocks/paypal/Dockerfile
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  stripe-mock:
+    build:
+      context: .
+      dockerfile: mocks/stripe/Dockerfile
+    ports:
+      - "8082:8082"
+    networks:
+      - app-network
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sh -c "sleep 2 && go test ./..."
+    depends_on:
+      paypal-mock:
+        condition: service_healthy
+      stripe-mock:
+        condition: service_healthy
+    networks:
+      - app-network
+    environment:
+      - PAYPAL_MOCK_URL=http://paypal-mock:8081
+      - STRIPE_MOCK_URL=http://stripe-mock:8082
+    
   app:
     build:
       context: .
@@ -9,22 +42,11 @@ services:
       - "8088:8088"
     networks:
       - app-network
-
-  paypal-mock:
-    build:
-      context: .
-      dockerfile: mocks/paypal/Dockerfile
-    ports:
-      - "8081:8081"
-    restart: unless-stopped
-
-  stripe-mock:
-    build:
-      context: .
-      dockerfile: mocks/stripe/Dockerfile
-    ports:
-      - "8082:8082"
-    restart: unless-stopped 
+    depends_on:
+      paypal-mock:
+        condition: service_healthy
+      stripe-mock:
+        condition: service_healthy
 
 networks:
   app-network:

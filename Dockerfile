@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # Run unit tests to validate the code
-RUN go test ./... -v
+# RUN go test ./... -v
 
 # Build the application binary from the main.go file located in the cmd directory
 RUN go build -o main ./cmd

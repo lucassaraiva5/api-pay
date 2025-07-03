@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/Rhymond/go-money"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -25,44 +26,47 @@ type PaymentMethod struct {
 }
 
 type CreateChargeRequest struct {
-	Amount        float64       `json:"amount"`
+	Amount        int64         `json:"amount"`
 	Currency      string        `json:"currency"`
 	Description   string        `json:"description"`
 	PaymentMethod PaymentMethod `json:"paymentMethod"`
 }
 
 type ChargeResponse struct {
-	ID             string  `json:"id"`
-	CreatedAt      string  `json:"createdAt"`
-	Status         string  `json:"status"`
-	OriginalAmount float64 `json:"originalAmount"`
-	CurrentAmount  float64 `json:"currentAmount"`
-	Currency       string  `json:"currency"`
-	Description    string  `json:"description"`
-	PaymentMethod  string  `json:"paymentMethod"`
-	CardId         string  `json:"cardId"`
+	ID             string `json:"id"`
+	CreatedAt      string `json:"createdAt"`
+	Status         string `json:"status"`
+	OriginalAmount int64  `json:"originalAmount"`
+	CurrentAmount  int64  `json:"currentAmount"`
+	Currency       string `json:"currency"`
+	Description    string `json:"description"`
+	PaymentMethod  string `json:"paymentMethod"`
+	CardId         string `json:"cardId"`
 }
 
 type RefundRequest struct {
-	Amount float64 `json:"amount"`
+	Amount int64 `json:"amount"`
+}
+
+type chargeInternal struct {
+	ID             string
+	CreatedAt      string
+	Status         string
+	OriginalAmount *money.Money
+	CurrentAmount  *money.Money
+	Currency       string
+	Description    string
+	PaymentMethod  string
+	CardId         string
 }
 
 var (
-	charges   = make(map[string]*ChargeResponse)
+	charges   = make(map[string]*chargeInternal)
 	chargesMu sync.Mutex
 )
 
 func generateID() string {
-	return RandString(16)
-}
-
-func RandString(n int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
+	return uuid.New().String()
 }
 
 func createChargeHandler(w http.ResponseWriter, r *http.Request) {
@@ -73,20 +77,32 @@ func createChargeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	id := generateID()
 	cardId := generateID()
-	resp := &ChargeResponse{
+	amount := money.New(req.Amount, req.Currency)
+	charge := &chargeInternal{
 		ID:             id,
 		CreatedAt:      time.Now().Format("2006-01-02"),
 		Status:         "authorized",
-		OriginalAmount: req.Amount,
-		CurrentAmount:  req.Amount,
+		OriginalAmount: amount,
+		CurrentAmount:  amount,
 		Currency:       req.Currency,
 		Description:    req.Description,
 		PaymentMethod:  req.PaymentMethod.Type,
 		CardId:         cardId,
 	}
 	chargesMu.Lock()
-	charges[id] = resp
+	charges[id] = charge
 	chargesMu.Unlock()
+	resp := ChargeResponse{
+		ID:             charge.ID,
+		CreatedAt:      charge.CreatedAt,
+		Status:         charge.Status,
+		OriginalAmount: charge.OriginalAmount.Amount(),
+		CurrentAmount:  charge.CurrentAmount.Amount(),
+		Currency:       charge.Currency,
+		Description:    charge.Description,
+		PaymentMethod:  charge.PaymentMethod,
+		CardId:         charge.CardId,
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
@@ -106,10 +122,22 @@ func refundChargeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	refundMoney := money.New(req.Amount, charge.Currency)
 	charge.Status = "refunded"
-	charge.CurrentAmount -= req.Amount
+	charge.CurrentAmount, _ = charge.CurrentAmount.Subtract(refundMoney)
+	resp := ChargeResponse{
+		ID:             charge.ID,
+		CreatedAt:      charge.CreatedAt,
+		Status:         charge.Status,
+		OriginalAmount: charge.OriginalAmount.Amount(),
+		CurrentAmount:  charge.CurrentAmount.Amount(),
+		Currency:       charge.Currency,
+		Description:    charge.Description,
+		PaymentMethod:  charge.PaymentMethod,
+		CardId:         charge.CardId,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(charge)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func getChargeHandler(w http.ResponseWriter, r *http.Request) {
@@ -122,8 +150,19 @@ func getChargeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	resp := ChargeResponse{
+		ID:             charge.ID,
+		CreatedAt:      charge.CreatedAt,
+		Status:         charge.Status,
+		OriginalAmount: charge.OriginalAmount.Amount(),
+		CurrentAmount:  charge.CurrentAmount.Amount(),
+		Currency:       charge.Currency,
+		Description:    charge.Description,
+		PaymentMethod:  charge.PaymentMethod,
+		CardId:         charge.CardId,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(charge)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func main() {

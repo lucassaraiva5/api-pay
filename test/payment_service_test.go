@@ -2,11 +2,12 @@ package test
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"lucassaraiva5/api-pay/internal/app/domain/payment"
 	paypalProvider "lucassaraiva5/api-pay/internal/app/providers/paypal"
 	stripeProvider "lucassaraiva5/api-pay/internal/app/providers/stripe"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestProcessPayment_SuccessWithPrimaryProvider(t *testing.T) {
@@ -118,12 +119,8 @@ func TestGetPayment_SuccessWithPrimaryProvider(t *testing.T) {
 }
 
 func TestRefundPayment_FailureWithBothProviders(t *testing.T) {
-	primary := &paypalProvider.Provider{
-		Payments: nil,
-	}
-	secondary := &stripeProvider.Provider{
-		Payments: nil,
-	}
+	primary := paypalProvider.New()
+	secondary := stripeProvider.New()
 
 	service := &payment.Service{
 		PrimaryProvider:   primary,
@@ -137,12 +134,8 @@ func TestRefundPayment_FailureWithBothProviders(t *testing.T) {
 }
 
 func TestGetPayment_FailureWithBothProviders(t *testing.T) {
-	primary := &paypalProvider.Provider{
-		Payments: nil,
-	}
-	secondary := &stripeProvider.Provider{
-		Payments: nil,
-	}
+	primary := paypalProvider.New()
+	secondary := stripeProvider.New()
 
 	service := &payment.Service{
 		PrimaryProvider:   primary,
