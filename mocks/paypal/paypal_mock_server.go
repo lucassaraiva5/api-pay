@@ -165,11 +165,18 @@ func getChargeHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/charges", createChargeHandler).Methods("POST")
 	r.HandleFunc("/refund/{id}", refundChargeHandler).Methods("POST")
 	r.HandleFunc("/charges/{id}", getChargeHandler).Methods("GET")
+	r.HandleFunc("/health", healthHandler).Methods("GET")
 	log.Println("PayPal mock server running on :8081")
 	http.ListenAndServe(":8081", r)
 }

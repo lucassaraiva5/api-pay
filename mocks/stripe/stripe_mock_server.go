@@ -161,11 +161,18 @@ func getTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/transactions", createTransactionHandler).Methods("POST")
 	r.HandleFunc("/void/{id}", voidTransactionHandler).Methods("POST")
 	r.HandleFunc("/transactions/{id}", getTransactionHandler).Methods("GET")
+	r.HandleFunc("/health", healthHandler).Methods("GET")
 	log.Println("Stripe mock server running on :8082")
 	http.ListenAndServe(":8082", r)
 }

@@ -8,6 +8,11 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   stripe-mock:
     build:
@@ -17,11 +22,16 @@ services:
       - "8082:8082"
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   test:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: test/Dockerfile
     command: sh -c "sleep 2 && go test ./..."
     depends_on:
       paypal-mock:
