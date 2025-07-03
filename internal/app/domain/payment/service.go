@@ -5,8 +5,8 @@ import (
 	"errors"
 	"lucassaraiva5/api-pay/internal/app/domain/paypal"
 	"lucassaraiva5/api-pay/internal/app/domain/stripe"
-	"lucassaraiva5/api-pay/internal/app/providers/paypal"
-	"lucassaraiva5/api-pay/internal/app/providers/stripe"
+	paypalProvider "lucassaraiva5/api-pay/internal/app/providers/paypal"
+	stripeProvider "lucassaraiva5/api-pay/internal/app/providers/stripe"
 	"lucassaraiva5/api-pay/internal/app/transport/outbound"
 )
 
@@ -24,7 +24,7 @@ func New(paypalProvider *paypalProvider.Provider, stripeProvider *stripeProvider
 
 type Provider interface {
 	CreatePayment(req interface{}) (interface{}, error)
-	Refund(paymentID string, amount float64) (interface{}, error)
+	Refund(paymentID string) (interface{}, error)
 	GetPayment(paymentID string) (interface{}, error)
 }
 
@@ -42,13 +42,13 @@ func (s *Service) ProcessPayment(ctx context.Context, payment *Payment) (*Paymen
 	return result, nil
 }
 
-func (s *Service) RefundPayment(ctx context.Context, paymentID string, amount float64) (*Payment, error) {
-	result, err := s.refundWithProvider(s.PrimaryProvider, paymentID, amount)
+func (s *Service) RefundPayment(ctx context.Context, paymentID string) (*Payment, error) {
+	result, err := s.refundWithProvider(s.PrimaryProvider, paymentID)
 	if err == nil {
 		return result, nil
 	}
 
-	result, err = s.refundWithProvider(s.SecondaryProvider, paymentID, amount)
+	result, err = s.refundWithProvider(s.SecondaryProvider, paymentID)
 	if err != nil {
 		return nil, errors.New("both providers failed to refund: " + err.Error())
 	}
@@ -120,12 +120,12 @@ func (s *Service) processWithProvider(provider Provider, payment *Payment) (*Pay
 	return s.adaptResponse(response)
 }
 
-func (s *Service) refundWithProvider(provider Provider, paymentID string, amount float64) (*Payment, error) {
+func (s *Service) refundWithProvider(provider Provider, paymentID string) (*Payment, error) {
 	if provider == nil {
 		return nil, errors.New("provider is nil")
 	}
 
-	response, err := provider.Refund(paymentID, amount)
+	response, err := provider.Refund(paymentID)
 	if err != nil {
 		return nil, err
 	}

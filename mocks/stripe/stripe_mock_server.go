@@ -41,7 +41,7 @@ type TransactionResponse struct {
 }
 
 type VoidRequest struct {
-	Amount int64 `json:"amount"`
+	// amount removido, não é mais necessário
 }
 
 type transactionInternal struct {
@@ -107,7 +107,7 @@ func voidTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	var req VoidRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -118,9 +118,12 @@ func voidTransactionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	voidMoney := money.New(req.Amount, transaction.Currency)
+	if transaction.Status == "voided" {
+		http.Error(w, "transaction already voided", http.StatusBadRequest)
+		return
+	}
 	transaction.Status = "voided"
-	transaction.Amount, _ = transaction.Amount.Subtract(voidMoney)
+	transaction.Amount = money.New(0, transaction.Currency)
 	resp := TransactionResponse{
 		ID:                  transaction.ID,
 		Date:                transaction.Date,

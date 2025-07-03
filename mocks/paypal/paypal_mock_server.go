@@ -45,7 +45,7 @@ type ChargeResponse struct {
 }
 
 type RefundRequest struct {
-	Amount int64 `json:"amount"`
+	// amount removido, não é mais necessário
 }
 
 type chargeInternal struct {
@@ -111,7 +111,7 @@ func refundChargeHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 	var req RefundRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -122,9 +122,12 @@ func refundChargeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	refundMoney := money.New(req.Amount, charge.Currency)
+	if charge.Status == "refunded" {
+		http.Error(w, "charge already refunded", http.StatusBadRequest)
+		return
+	}
 	charge.Status = "refunded"
-	charge.CurrentAmount, _ = charge.CurrentAmount.Subtract(refundMoney)
+	charge.CurrentAmount = money.New(0, charge.Currency)
 	resp := ChargeResponse{
 		ID:             charge.ID,
 		CreatedAt:      charge.CreatedAt,

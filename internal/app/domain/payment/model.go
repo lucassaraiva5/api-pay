@@ -27,5 +27,5 @@ type Card struct {
 }
 
 type Refund struct {
-	Amount float64 `json:"amount"`
+	// amount removido, refund é sempre total
 }

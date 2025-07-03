@@ -4,10 +4,11 @@ import (
 	"lucassaraiva5/api-pay/internal/app/domain"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
 	"lucassaraiva5/api-pay/internal/app/domain/payment"
 	"lucassaraiva5/api-pay/internal/app/transport/inbound"
 	"lucassaraiva5/api-pay/internal/app/transport/mapper"
+
+	"github.com/labstack/echo/v4"
 )
 
 type PaymentHandler struct {
@@ -46,7 +47,7 @@ func (h *PaymentHandler) RefundPayment(c echo.Context) error {
 	}
 
 	paymentID := c.QueryParam("id")
-	result, err := h.service.RefundPayment(c.Request().Context(), paymentID, refund.Amount)
+	result, err := h.service.RefundPayment(c.Request().Context(), paymentID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

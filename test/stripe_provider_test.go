@@ -66,7 +66,7 @@ func TestStripe_Refund_Success(t *testing.T) {
 	response, _ := provider.CreatePayment(request)
 	payment := response.(*outbound.StripePaymentResponse)
 
-	refundResponse, err := provider.Refund(payment.ID, 50.0)
+	refundResponse, err := provider.Refund(payment.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -76,15 +76,15 @@ func TestStripe_Refund_Success(t *testing.T) {
 		t.Fatalf("expected status to be voided, got %s", refundedPayment.Status)
 	}
 
-	if refundedPayment.Amount != 50.0 {
-		t.Fatalf("expected remaining amount to be 50.0, got %f", refundedPayment.Amount)
+	if refundedPayment.Amount != 0.0 {
+		t.Fatalf("expected remaining amount to be 0.0, got %f", refundedPayment.Amount)
 	}
 }
 
 func TestStripe_Refund_PaymentNotFound(t *testing.T) {
 	provider := stripeProvider.New()
 
-	_, err := provider.Refund("invalid-id", 50.0)
+	_, err := provider.Refund("invalid-id")
 	if err == nil {
 		t.Fatalf("expected an error, got nil")
 	}

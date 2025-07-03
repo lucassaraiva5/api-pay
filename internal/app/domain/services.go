@@ -3,7 +3,7 @@ package domain
 import (
 	"lucassaraiva5/api-pay/internal/app/domain/payment"
 	paypalProvider "lucassaraiva5/api-pay/internal/app/providers/paypal"
-	"lucassaraiva5/api-pay/internal/app/providers/stripe"
+	stripeProvider "lucassaraiva5/api-pay/internal/app/providers/stripe"
 )
 
 type Services struct {

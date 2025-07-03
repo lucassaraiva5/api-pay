@@ -73,7 +73,7 @@ func TestRefundPayment_SuccessWithPrimaryProvider(t *testing.T) {
 	}
 	createdPayment, _ := service.ProcessPayment(context.Background(), paymentRequest)
 
-	result, err := service.RefundPayment(context.Background(), createdPayment.ID, 50.0)
+	result, err := service.RefundPayment(context.Background(), createdPayment.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -127,7 +127,7 @@ func TestRefundPayment_FailureWithBothProviders(t *testing.T) {
 		SecondaryProvider: secondary,
 	}
 
-	_, err := service.RefundPayment(context.Background(), "invalid-id", 50.0)
+	_, err := service.RefundPayment(context.Background(), "invalid-id")
 	if err == nil {
 		t.Fatalf("expected an error, got nil")
 	}

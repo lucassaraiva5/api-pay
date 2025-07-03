@@ -83,18 +83,11 @@ func (p *Provider) CreatePayment(req interface{}) (interface{}, error) {
 	return &payment, nil
 }
 
-func (p *Provider) Refund(paymentID string, amount float64) (interface{}, error) {
+func (p *Provider) Refund(paymentID string) (interface{}, error) {
 	fmt.Println("[DEBUG] STRIPE_MOCK_URL:", getStripeMockURL())
-	payload := map[string]interface{}{
-		"amount": int64(amount * 100),
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
 	url := fmt.Sprintf("%s/void/%s", getStripeMockURL(), paymentID)
 	fmt.Println("[DEBUG] POST URL:", url)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		return nil, err
 	}
