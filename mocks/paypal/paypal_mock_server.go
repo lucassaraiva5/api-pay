@@ -112,6 +112,7 @@ func refundChargeHandler(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 	var req RefundRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		log.Printf("[ERROR] Invalid refund request for charge %s: %v", id, err)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -119,15 +120,18 @@ func refundChargeHandler(w http.ResponseWriter, r *http.Request) {
 	defer chargesMu.Unlock()
 	charge, ok := charges[id]
 	if !ok {
+		log.Printf("[ERROR] Refund failed: charge %s not found", id)
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 	if charge.Status == "refunded" {
+		log.Printf("[ERROR] Refund failed: charge %s already refunded", id)
 		http.Error(w, "charge already refunded", http.StatusBadRequest)
 		return
 	}
 	charge.Status = "refunded"
 	charge.CurrentAmount = money.New(0, charge.Currency)
+	log.Printf("[INFO] Refund successful: charge %s fully refunded", id)
 	resp := ChargeResponse{
 		ID:             charge.ID,
 		CreatedAt:      charge.CreatedAt,
@@ -180,6 +184,6 @@ func main() {
 	r.HandleFunc("/refund/{id}", refundChargeHandler).Methods("POST")
 	r.HandleFunc("/charges/{id}", getChargeHandler).Methods("GET")
 	r.HandleFunc("/health", healthHandler).Methods("GET")
-	log.Println("PayPal mock server running on :8081")
+	log.Println("[INFO] PayPal mock server running on :8081")
 	http.ListenAndServe(":8081", r)
 }

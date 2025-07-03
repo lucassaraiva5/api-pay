@@ -108,6 +108,7 @@ func voidTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 	var req VoidRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		log.Printf("[ERROR] Invalid void request for transaction %s: %v", id, err)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -115,15 +116,18 @@ func voidTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	defer transactionsMu.Unlock()
 	transaction, ok := transactions[id]
 	if !ok {
+		log.Printf("[ERROR] Void failed: transaction %s not found", id)
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 	if transaction.Status == "voided" {
+		log.Printf("[ERROR] Void failed: transaction %s already voided", id)
 		http.Error(w, "transaction already voided", http.StatusBadRequest)
 		return
 	}
 	transaction.Status = "voided"
 	transaction.Amount = money.New(0, transaction.Currency)
+	log.Printf("[INFO] Void successful: transaction %s fully voided", id)
 	resp := TransactionResponse{
 		ID:                  transaction.ID,
 		Date:                transaction.Date,
@@ -176,6 +180,6 @@ func main() {
 	r.HandleFunc("/void/{id}", voidTransactionHandler).Methods("POST")
 	r.HandleFunc("/transactions/{id}", getTransactionHandler).Methods("GET")
 	r.HandleFunc("/health", healthHandler).Methods("GET")
-	log.Println("Stripe mock server running on :8082")
+	log.Println("[INFO] Stripe mock server running on :8082")
 	http.ListenAndServe(":8082", r)
 }

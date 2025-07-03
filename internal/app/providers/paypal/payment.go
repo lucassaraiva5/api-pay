@@ -2,11 +2,14 @@ package paypalProvider
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"lucassaraiva5/api-pay/internal/app/domain/paypal"
 	"lucassaraiva5/api-pay/internal/app/transport/outbound"
+	"lucassaraiva5/api-pay/internal/infra/logger"
+	"lucassaraiva5/api-pay/internal/infra/logger/attributes"
 	"net/http"
 	"os"
 )
@@ -27,10 +30,13 @@ func getPaypalMockURL() string {
 }
 
 func (p *Provider) CreatePayment(req interface{}) (interface{}, error) {
-	fmt.Println("[DEBUG] PAYPAL_MOCK_URL:", getPaypalMockURL())
+	ctx := context.Background()
+	logger.Info(ctx, "[PayPal] CreatePayment called", nil)
 	request, ok := req.(*paypal.PaymentRequest)
 	if !ok {
-		return nil, errors.New("invalid request type for PayPal")
+		err := errors.New("invalid request type for PayPal")
+		logger.Error(ctx, "[PayPal] Invalid request type", attributes.Attributes{"request": req}.WithError(err))
+		return nil, err
 	}
 
 	payload := map[string]interface{}{
@@ -41,17 +47,21 @@ func (p *Provider) CreatePayment(req interface{}) (interface{}, error) {
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
+		logger.Error(ctx, "[PayPal] Error marshaling payload", attributes.Attributes{"payload": payload}.WithError(err))
 		return nil, err
 	}
 	url := getPaypalMockURL() + "/charges"
-	fmt.Println("[DEBUG] POST URL:", url)
+	logger.Info(ctx, "[PayPal] POST to mock", attributes.Attributes{"url": url})
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
+		logger.Error(ctx, "[PayPal] Error on POST", attributes.Attributes{"url": url}.WithError(err))
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("PayPal mock returned status %d", resp.StatusCode)
+		err := fmt.Errorf("PayPal mock returned status %d", resp.StatusCode)
+		logger.Error(ctx, "[PayPal] Mock returned error status", attributes.Attributes{"status": resp.StatusCode, "url": url}.WithError(err))
+		return nil, err
 	}
 	var mockResp struct {
 		ID             string `json:"id"`
@@ -65,6 +75,7 @@ func (p *Provider) CreatePayment(req interface{}) (interface{}, error) {
 		CardId         string `json:"cardId"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&mockResp); err != nil {
+		logger.Error(ctx, "[PayPal] Error decoding response", attributes.Attributes{}.WithError(err))
 		return nil, err
 	}
 	payment := outbound.PaypalPaymentResponse{
@@ -76,20 +87,25 @@ func (p *Provider) CreatePayment(req interface{}) (interface{}, error) {
 		CreatedAt:   mockResp.CreatedAt,
 		Method:      request.PaymentMethod,
 	}
+	logger.Info(ctx, "[PayPal] Payment created successfully", attributes.Attributes{"payment_id": payment.ID})
 	return &payment, nil
 }
 
 func (p *Provider) Refund(paymentID string) (interface{}, error) {
-	fmt.Println("[DEBUG] PAYPAL_MOCK_URL:", getPaypalMockURL())
+	ctx := context.Background()
+	logger.Info(ctx, "[PayPal] Refund called", attributes.Attributes{"payment_id": paymentID})
 	url := fmt.Sprintf("%s/refund/%s", getPaypalMockURL(), paymentID)
-	fmt.Println("[DEBUG] POST URL:", url)
+	logger.Info(ctx, "[PayPal] POST to mock for refund", attributes.Attributes{"url": url})
 	resp, err := http.Post(url, "application/json", nil)
 	if err != nil {
+		logger.Error(ctx, "[PayPal] Error on POST refund", attributes.Attributes{"url": url}.WithError(err))
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("PayPal mock returned status %d", resp.StatusCode)
+		err := fmt.Errorf("PayPal mock returned status %d", resp.StatusCode)
+		logger.Error(ctx, "[PayPal] Mock returned error status on refund", attributes.Attributes{"status": resp.StatusCode, "url": url}.WithError(err))
+		return nil, err
 	}
 	var mockResp struct {
 		ID             string `json:"id"`
@@ -103,6 +119,7 @@ func (p *Provider) Refund(paymentID string) (interface{}, error) {
 		CardId         string `json:"cardId"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&mockResp); err != nil {
+		logger.Error(ctx, "[PayPal] Error decoding refund response", attributes.Attributes{}.WithError(err))
 		return nil, err
 	}
 	payment := outbound.PaypalPaymentResponse{
@@ -114,6 +131,7 @@ func (p *Provider) Refund(paymentID string) (interface{}, error) {
 		CreatedAt:   mockResp.CreatedAt,
 		Method:      paypal.PaymentMethod{Type: mockResp.PaymentMethod},
 	}
+	logger.Info(ctx, "[PayPal] Refund processed successfully", attributes.Attributes{"payment_id": payment.ID})
 	return &payment, nil
 }
 
