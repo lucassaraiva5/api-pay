@@ -5,10 +5,27 @@ import (
 	"lucassaraiva5/api-pay/internal/app/domain/payment"
 	paypalProvider "lucassaraiva5/api-pay/internal/app/providers/paypal"
 	stripeProvider "lucassaraiva5/api-pay/internal/app/providers/stripe"
+	"lucassaraiva5/api-pay/internal/infra/logger"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
 )
+
+func TestMain(m *testing.M) {
+	// Initialize logger before running tests
+	logger.Init(&logger.Option{
+		ServiceName:    "api-pay-test",
+		ServiceVersion: "1.0.0",
+		Environment:    "test",
+		LogLevel:       "info",
+	})
+
+	defer logger.Sync()
+
+	// Run tests
+	os.Exit(m.Run())
+}
 
 func TestProcessPayment_SuccessWithPrimaryProvider(t *testing.T) {
 	primary := paypalProvider.New()

@@ -27,5 +27,5 @@ type Card struct {
 }
 
 type Refund struct {
-	// amount removido, refund é sempre total
+	ID string `json:"id"` // ID do pagamento original
 }

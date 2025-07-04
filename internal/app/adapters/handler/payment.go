@@ -46,7 +46,7 @@ func (h *PaymentHandler) RefundPayment(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
-	paymentID := c.QueryParam("id")
+	paymentID := refund.ID
 	result, err := h.service.RefundPayment(c.Request().Context(), paymentID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
